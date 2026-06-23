@@ -1,3 +1,12 @@
-from vision import analyze_screen
+from tts import speak
 
-print(analyze_screen("Что видно на экране? Ответь кратко."))
+tests = [
+    "Произошла ошибка при анализе экрана.",
+    "Ollama разорвал соединение во время анализа экрана.",
+    "На экране открыт VS Code и Chrome.",
+    "Ошибка API: http://localhost:11434/api/tags",
+]
+
+for text in tests:
+    print("TEST:", text)
+    speak(text)

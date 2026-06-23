@@ -9,7 +9,11 @@ from ollama import Client, ResponseError
 SCREENSHOT_DIR = Path("screenshots")
 VISION_MODEL = "llava:7b"
 
-client = Client(host="http://127.0.0.1:11434")
+client = Client(
+    host="http://127.0.0.1:11434",
+    trust_env=False,
+    timeout=120,
+)
 
 
 def take_screenshot(monitor_index: int = 1) -> Path:
