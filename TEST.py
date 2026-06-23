@@ -1,13 +1,16 @@
-import pyperclip
+from media_actions import handle_media_command
 
-from clipboard_actions import (
-    read_clipboard,
-    summarize_clipboard,
-    explain_clipboard,
-)
+tests = [
+    "сделай громче",
+    "сделай тише",
+    "сделай громче на 5",
+    "выключи звук",
+    "пауза",
+    "следующий трек",
+    "предыдущий трек",
+]
 
-pyperclip.copy("print('Hello world')")
-
-print(read_clipboard())
-print(explain_clipboard())
-print(summarize_clipboard())
+for command in tests:
+    print("\nTEST:", command)
+    result = handle_media_command(command)
+    print("RESULT:", result)

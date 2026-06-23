@@ -31,6 +31,19 @@ from screen_error_actions import (
     explain_screen_code_problem,
 )
 
+from web_actions import handle_web_command
+
+from media_actions import handle_media_command
+
+from confirmation import (
+    is_dangerous_command,
+    is_confirm_phrase,
+    is_cancel_phrase,
+    set_pending_command,
+    get_pending_command,
+    clear_pending_command,
+)
+
 COMMAND_STARTERS = [
     "нажми",
     "нажать",
@@ -91,11 +104,14 @@ def split_compound_commands(text: str) -> list[str]:
 
     return cleaned_parts
 
-def handle_single_local_command(text: str) -> str | None:
+def handle_single_local_command(text: str, confirmed: bool = False) -> str | None:
     lower = text.lower().strip()
 
     print("LOCAL COMMAND RAW:", repr(text))
     print("LOCAL COMMAND LOWER:", repr(lower))
+
+    if is_dangerous_command(text) and not confirmed:
+        return set_pending_command(text)
 
     if any(phrase in lower for phrase in [
         "объясни ошибку",
@@ -213,6 +229,11 @@ def handle_single_local_command(text: str) -> str | None:
     if keyboard_answer:
         return keyboard_answer
 
+    media_answer = handle_media_command(text)
+
+    if media_answer:
+        return media_answer
+
     text_input_answer = handle_text_input_command(text)
 
     if text_input_answer:
@@ -257,6 +278,11 @@ def handle_single_local_command(text: str) -> str | None:
     ]):
         return clear_clipboard()
 
+    web_answer = handle_web_command(text)
+
+    if web_answer:
+        return web_answer
+
     open_phrases = [
         "открой ",
         "запусти ",
@@ -276,6 +302,25 @@ def handle_single_local_command(text: str) -> str | None:
     return None
 
 def handle_local_command(text: str) -> str | None:
+    pending = get_pending_command()
+
+    if pending:
+        if is_confirm_phrase(text):
+            command_text = pending["text"]
+            clear_pending_command()
+
+            print("CONFIRMED COMMAND:", repr(command_text))
+
+            return handle_single_local_command(
+                command_text,
+                confirmed=True,
+            )
+
+        if is_cancel_phrase(text):
+            clear_pending_command()
+            return "Отменил команду."
+
+    # Если подтверждения нет, выполняем обычную команду
     commands = split_compound_commands(text)
 
     if len(commands) <= 1:
@@ -292,5 +337,10 @@ def handle_local_command(text: str) -> str | None:
             results.append(f"не понял команду «{command}»")
         else:
             results.append(result)
+
+            # Если одна из команд запросила подтверждение,
+            # дальше цепочку не продолжаем.
+            if get_pending_command():
+                return result
 
     return "Выполнил команды по порядку."
