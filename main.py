@@ -16,6 +16,8 @@ from memory import save_fact
 
 import time
 
+from commands import handle_local_command
+
 SESSION_TIMEOUT = 12
 
 state = {
@@ -97,13 +99,21 @@ def main():
             continue
         #--------------------------------------------------
 
+        local_answer = handle_local_command(text)
+
+        if local_answer:
+            print("Джарвис:", local_answer)
+            speak(local_answer)
+            state["last activity"] = time.time()
+            continue
+
         answer = ask_ai(text)
 
         print("Джарвис:", answer)
 
         speak(answer)
 
-        state["last_activity"] = time.time()
+        state["last activity"] = time.time()
 
 if __name__ == "__main__":
     main()

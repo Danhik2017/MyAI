@@ -1,11 +1,3 @@
-import asyncio
-import edge_tts
+from vision import analyze_screen
 
-async def test():
-    communicate = edge_tts.Communicate(
-        "Hello world",
-        voice="en-US-AriaNeural"
-    )
-    await communicate.save("test.mp3")
-
-asyncio.run(test())
+print(analyze_screen("Что видно на экране? Ответь кратко."))

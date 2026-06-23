@@ -80,6 +80,26 @@ def needs_internet(user_input):
 
         return False
 
+def build_web_context(results: list[dict]) -> str:
+    if not results:
+        return "Результаты поиска отсутствуют."
+
+    blocks = []
+
+    for i, item in enumerate(results, start=1):
+        title = item.get("title", "")
+        body = item.get("body", "")
+        url = item.get("url", "")
+
+        blocks.append(
+            f"[{i}] {title}\n"
+            f"Описание: {body}\n"
+            f"Источник: {url}"
+        )
+
+    return "\n\n".join(blocks)
+
+
 def ask_ai(user_input):
 
     global conversation
@@ -104,85 +124,88 @@ def ask_ai(user_input):
             results = search_web(user_input)
 
             print("\n===== SEARCH RESULTS =====")
+            web_context = build_web_context(results)
 
-            for i, item in enumerate(results):
-                print(f"\nРезультат {i + 1}")
-
-                print("TITLE:", item.get("title"))
-
-                print("BODY:", item.get("body"))
-
-                print("URL:", item.get("url"))
-
+            print("\n===== SEARCH RESULTS =====")
+            print(web_context)
             print("==========================\n")
 
-            web_context = ""
+            messages = [
+                {
+                    "role": "system",
+                    "content": system_prompt + """
 
-            if results:
-                for item in results:
+            Ты отвечаешь на вопрос пользователя по интернет-данным.
 
-                    title = item.get("title", "")
-                    body = item.get("body", "")
-
-                    web_context += (
-                        f"Заголовки: {title}\n"
-                        f"Описание: {body}\n"
-                    )
-
-            else:
-                web_context = "Результаты поиска отсутствуют."
-
-            internet_prompt = f"""
-            Ты используешь интернет-данные для ответа.
-
-            ДАННЫЕ ИЗ ПОИСКА:
+            Правила:
+            - Используй только данные из блока WEB_RESULTS.
+            - Если данных недостаточно, честно скажи, что точной информации не найдено.
+            - Не выдумывай факты.
+            - Отвечай кратко, на русском языке.
+            - В конце укажи источник, если он есть.
+            """
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+            WEB_RESULTS:
             {web_context}
 
             ВОПРОС:
             {user_input}
-
-            Ответь на основе данных выше.
             """
+                }
+            ]
 
-            conversation.append({
-                "role": "user",
-                "content": internet_prompt
-            })
-
-        try:
             response = client.chat.completions.create(
                 model=MODEL,
-                messages = conversation,
-                temperature=0.7,
+                messages=messages,
+                temperature=0.2,
                 max_tokens=300
             )
 
             answer = response.choices[0].message.content
 
-            conversation.append(
-                {
-                    "role": "assistant",
-                    "content": answer
-                }
-            )
+            conversation.append({
+                "role": "user",
+                "content": user_input
+            })
+            conversation.append({
+                "role": "assistant",
+                "content": answer
+            })
 
             if len(conversation) > MAX_HISTORY + 1:
-                conversation = [
-                    conversation[0]
-                    ] + conversation[-MAX_HISTORY:]
+                conversation = [conversation[0]] + conversation[-MAX_HISTORY:]
 
             return answer
 
-        except Exception as e:
+        conversation.append({
+            "role": "user",
+            "content": user_input
+        })
 
-            print(e)
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=conversation,
+            temperature=0.5,
+            max_tokens=300
+        )
 
-            return "Извините, произошла ошибка"
+        answer = response.choices[0].message.content
+
+        conversation.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        if len(conversation) > MAX_HISTORY + 1:
+            conversation = [conversation[0]] + conversation[-MAX_HISTORY:]
+
+        return answer
 
     except Exception as e:
-
         print("Ошибка Groq:", e)
-
         return "Произошла ошибка"
 
 
