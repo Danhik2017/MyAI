@@ -1,5 +1,4 @@
-from actions import open_app
+from window_action import get_open_windows
 
-print(open_app("chrome."))
-print(open_app("блокнот."))
-print(open_app("калькулятор пожалуйста"))
+for window in get_open_windows():
+    print(window.process_name, "|", window.title, "|", window.exe_path)
