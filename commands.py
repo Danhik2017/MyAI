@@ -1,7 +1,6 @@
 import re
 
 from vision import analyze_screen
-from actions import open_app
 
 from window_action import (
     minimize_active_window,
@@ -25,6 +24,11 @@ from clipboard_actions import (
     explain_clipboard,
     fix_clipboard_code,
     clear_clipboard,
+)
+
+from screen_error_actions import (
+    explain_screen_error,
+    explain_screen_code_problem,
 )
 
 COMMAND_STARTERS = [
@@ -92,6 +96,30 @@ def handle_single_local_command(text: str) -> str | None:
 
     print("LOCAL COMMAND RAW:", repr(text))
     print("LOCAL COMMAND LOWER:", repr(lower))
+
+    if any(phrase in lower for phrase in [
+        "объясни ошибку",
+        "что за ошибка",
+        "что это за ошибка",
+        "как исправить ошибку",
+        "ошибка на экране",
+        "проанализируй ошибку",
+        "разбери ошибку",
+        "объясни traceback",
+        "проанализируй traceback",
+        "что значит traceback",
+        "почему ошибка",
+    ]):
+        return explain_screen_error()
+
+    if any(phrase in lower for phrase in [
+        "проверь код на экране",
+        "что не так с кодом",
+        "что не так с кодом на экране",
+        "найди проблему в коде",
+        "проанализируй код на экране",
+    ]):
+        return explain_screen_code_problem()
 
     screen_phrases = [
         "что на экране",

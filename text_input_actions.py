@@ -42,6 +42,45 @@ CODE_REPLACEMENTS = {
     "обратный слэш": "\\",
 }
 
+def clean_text_to_type(text: str) -> str:
+    text = str(text).strip()
+
+    # Убираем фразы, которые STT иногда добавляет как часть диктовки
+    trash_phrases = [
+        "в кавычках",
+        "с кавычками",
+        "без кавычек",
+    ]
+
+    lowered = text.lower()
+
+    for phrase in trash_phrases:
+        lowered = lowered.replace(phrase, "")
+
+    text = lowered.strip()
+
+    # Убираем внешние кавычки, если весь текст обёрнут в них
+    quote_pairs = [
+        ('"', '"'),
+        ("'", "'"),
+        ("«", "»"),
+        ("“", "”"),
+        ("„", "“"),
+        ("`", "`"),
+    ]
+
+    changed = True
+
+    while changed:
+        changed = False
+        text = text.strip()
+
+        for left, right in quote_pairs:
+            if text.startswith(left) and text.endswith(right) and len(text) >= 2:
+                text = text[1:-1].strip()
+                changed = True
+
+    return text
 
 def normalize_input_command(text: str) -> str:
     text = str(text).strip()
@@ -197,7 +236,9 @@ def handle_text_input_command(text: str) -> str | None:
     if text_to_type is None:
         return None
 
+    text_to_type = clean_text_to_type(text_to_type)
     text_to_type = apply_code_replacements(text_to_type)
+    text_to_type = clean_text_to_type(text_to_type)
 
     if not text_to_type.strip():
         return "Я не понял, какой текст нужно ввести."
