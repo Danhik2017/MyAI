@@ -12,13 +12,26 @@ def handle_local_command(text: str) -> str | None:
         "что ты видишь",
         "опиши экран",
         "прочитай экран",
+        "проанализируй экран",
+        "посмотри что происходит",
     ]
 
     if any(phrase in lower for phrase in screen_phrases):
+        detailed = any(
+            word in lower
+            for word in [
+                "подробно",
+                "детально",
+                "проанализируй",
+                "объясни",
+                "что происходит",
+                "разбери",
+            ]
+        )
+
         return analyze_screen(
-            "Посмотри на скриншот экрана. "
-            "Кратко опиши, что видно. "
-            "Если есть важный текст, перескажи его."
+            question=text,
+            detailed=detailed,
         )
 
     open_phrases = [
