@@ -15,6 +15,10 @@ from window_action import (
 
 from keyboard_actions import handle_keyboard_command
 
+from text_input_actions import handle_text_input_command
+
+from actions import open_app, is_known_app
+
 def handle_local_command(text: str) -> str | None:
     lower = text.lower().strip()
 
@@ -113,6 +117,11 @@ def handle_local_command(text: str) -> str | None:
     if keyboard_answer:
         return keyboard_answer
 
+    text_input_answer = handle_text_input_command(text)
+
+    if text_input_answer:
+        return text_input_answer
+
     open_phrases = [
         "открой ",
         "запусти ",
@@ -124,5 +133,9 @@ def handle_local_command(text: str) -> str | None:
             app_name = lower.replace(phrase, "", 1).strip()
             return open_app(app_name)
 
+    app_candidate = lower.strip()
+
+    if is_known_app(app_candidate):
+        return open_app(app_candidate)
 
     return None

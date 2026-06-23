@@ -1,20 +1,13 @@
-from keyboard_actions import handle_keyboard_command
+from text_input_actions import handle_text_input_command
 
 tests = [
-    "нажми энтер",
-    "нажми escape",
-    "скопируй",
-    "вставь",
-    "сохрани",
-    "отмени",
-    "выдели всё",
-    "открой новую вкладку",
-    "закрой вкладку",
-    "обнови страницу",
+    "напиши привет как дела",
+    "введи import requests",
+    "набери print('hello world')",
+    "джарвис напиши это тестовый текст",
 ]
 
 for command in tests:
     print("\nTEST:", command)
-    result = handle_keyboard_command(command)
+    result = handle_text_input_command(command)
     print("RESULT:", result)
-    

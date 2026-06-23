@@ -29,6 +29,9 @@ WINDOWS_APPS = {
     "visual studio code": ["cmd", "/c", "start", "", "code"],
 }
 
+def is_known_app(app_name: str) -> bool:
+    app_name = normalize_app_name(app_name)
+    return app_name in WINDOWS_APPS
 
 def normalize_app_name(text: str) -> str:
     text = text.lower().strip()
