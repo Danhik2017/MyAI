@@ -89,7 +89,7 @@ def build_screen_prompt(user_question: str | None = None, detailed: bool = False
 """.strip()
 
 
-def analyze_screen(question: str | None = None) -> str:
+def analyze_screen(question: str | None = None, detailed: bool = False) -> str:
     raw_screenshot = None
     image_path = None
 
@@ -97,11 +97,22 @@ def analyze_screen(question: str | None = None) -> str:
         raw_screenshot = take_screenshot()
         image_path = compress_image_for_vision(raw_screenshot)
 
-        prompt = question or (
-            "Опиши, что сейчас видно на экране компьютера. "
-            "Если виден текст, кратко перескажи его. "
-            "Ответь на русском языке."
-        )
+        if detailed:
+            prompt = (
+                "Посмотри на скриншот экрана. "
+                "Подробно опиши, что сейчас видно. "
+                "Скажи, какие окна или приложения открыты. "
+                "Если виден текст или ошибка, объясни самое важное. "
+                "Отвечай нормальным русским языком, без английских букв, без markdown и списков. "
+                "Ответ должен быть естественным для голосового помощника."
+            )
+        else:
+            prompt = question or (
+                "Опиши, что сейчас видно на экране компьютера. "
+                "Если виден текст, кратко перескажи его. "
+                "Отвечай нормальным русским языком, без английских букв. "
+                "Ответь естественно, как голосовой помощник."
+            )
 
         response = client.chat(
             model=VISION_MODEL,
@@ -113,12 +124,18 @@ def analyze_screen(question: str | None = None) -> str:
                 }
             ],
             options={
-                "temperature": 0.1,
-                "num_ctx": 2048,
+                "temperature": 0.2,
+                "num_ctx": 4096,
+                "num_predict": 220 if detailed else 140,
             },
         )
 
-        return response["message"]["content"].strip()
+        raw_answer = response["message"]["content"].strip()
+
+        return normalize_vision_answer(
+            raw_text=raw_answer,
+            user_question=question,
+        )
 
     except ResponseError as e:
         print("Ошибка Ollama vision ResponseError:", e)
