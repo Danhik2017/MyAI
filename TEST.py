@@ -1,13 +1,13 @@
-from commands import handle_local_command
+import pyperclip
 
-tests = [
-    "напиши привет и нажми enter",
-    "напиши hello world и нажми enter",
-    "открой блокнот и напиши привет",
-    "скопируй и открой новую вкладку и вставь",
-]
+from clipboard_actions import (
+    read_clipboard,
+    summarize_clipboard,
+    explain_clipboard,
+)
 
-for command in tests:
-    print("\nTEST:", command)
-    result = handle_local_command(command)
-    print("RESULT:", result)
+pyperclip.copy("print('Hello world')")
+
+print(read_clipboard())
+print(explain_clipboard())
+print(summarize_clipboard())

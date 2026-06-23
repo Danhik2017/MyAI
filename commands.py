@@ -19,6 +19,14 @@ from text_input_actions import handle_text_input_command
 
 from actions import open_app, is_known_app
 
+from clipboard_actions import (
+    read_clipboard,
+    summarize_clipboard,
+    explain_clipboard,
+    fix_clipboard_code,
+    clear_clipboard,
+)
+
 COMMAND_STARTERS = [
     "нажми",
     "нажать",
@@ -181,6 +189,45 @@ def handle_single_local_command(text: str) -> str | None:
 
     if text_input_answer:
         return text_input_answer
+
+    if any(phrase in lower for phrase in [
+        "прочитай буфер обмена",
+        "что в буфере обмена",
+        "что я скопировал",
+        "прочитай скопированное",
+    ]):
+        return read_clipboard()
+
+    if any(phrase in lower for phrase in [
+        "перескажи буфер обмена",
+        "кратко перескажи скопированное",
+        "суммируй скопированное",
+        "сделай краткое содержание скопированного",
+    ]):
+        return summarize_clipboard()
+
+    if any(phrase in lower for phrase in [
+        "объясни буфер обмена",
+        "объясни скопированное",
+        "объясни скопированный текст",
+        "объясни скопированный код",
+        "что значит скопированный код",
+    ]):
+        return explain_clipboard()
+
+    if any(phrase in lower for phrase in [
+        "исправь скопированный код",
+        "проверь скопированный код",
+        "найди ошибку в скопированном коде",
+        "что не так со скопированным кодом",
+    ]):
+        return fix_clipboard_code()
+
+    if any(phrase in lower for phrase in [
+        "очисти буфер обмена",
+        "очистить буфер обмена",
+    ]):
+        return clear_clipboard()
 
     open_phrases = [
         "открой ",
