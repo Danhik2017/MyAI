@@ -3,35 +3,49 @@ import time
 
 import pyautogui
 import pyperclip
+import win32api
+import win32clipboard
+import win32con
+import win32gui
 
 
 TEXT_COMMAND_PREFIXES = [
+    "напиши в поле",
+    "введи в поле",
+    "набери в поле",
+    "напечатай в поле",
     "напиши",
     "введи",
     "набери",
     "напечатай",
-    "напиши в поле",
-    "введи в поле",
-    "набери в поле",
 ]
+
 
 CODE_REPLACEMENTS = {
     "открытая скобка": "(",
     "закрытая скобка": ")",
+    "левая скобка": "(",
+    "правая скобка": ")",
     "двоеточие": ":",
     "точка с запятой": ";",
+    "запятая": ",",
+    "точка": ".",
     "кавычка": '"',
+    "кавычки": '"',
     "одинарная кавычка": "'",
+    "апостроф": "'",
     "равно": "=",
+    "плюс": "+",
+    "минус": "-",
     "нижнее подчеркивание": "_",
     "слэш": "/",
     "обратный слэш": "\\",
 }
 
-def normalize_input_command(text: str) -> str:
-    text = text.strip()
 
-    # Убираем wake word, если он попал в распознанный текст
+def normalize_input_command(text: str) -> str:
+    text = str(text).strip()
+
     wake_words = [
         "джарвис",
         "jarvis",
@@ -55,7 +69,6 @@ def extract_text_to_type(command: str) -> str | None:
     normalized = normalize_input_command(command)
     lower = normalized.lower()
 
-    # Сначала более длинные команды, чтобы "напиши в поле" не сломалось на "напиши"
     sorted_prefixes = sorted(TEXT_COMMAND_PREFIXES, key=len, reverse=True)
 
     for prefix in sorted_prefixes:
@@ -76,32 +89,100 @@ def apply_code_replacements(text: str | None) -> str:
 
     return result
 
-def paste_text(text: str, restore_clipboard: bool = True) -> str:
+
+def get_active_window_title() -> str:
+    try:
+        hwnd = win32gui.GetForegroundWindow()
+        return win32gui.GetWindowText(hwnd)
+    except Exception:
+        return ""
+
+
+def set_clipboard_text(text: str) -> bool:
+    """
+    Надёжная установка Unicode-текста в буфер обмена Windows.
+    pyperclip иногда работает нормально, но Win32-вариант стабильнее.
+    """
+    try:
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, text)
+        win32clipboard.CloseClipboard()
+        return True
+
+    except Exception as e:
+        print("Ошибка Win32 clipboard:", e)
+
+        try:
+            win32clipboard.CloseClipboard()
+        except Exception:
+            pass
+
+        try:
+            pyperclip.copy(text)
+            return True
+        except Exception as e2:
+            print("Ошибка pyperclip:", e2)
+            return False
+
+
+def get_clipboard_text() -> str:
+    try:
+        return pyperclip.paste()
+    except Exception:
+        return ""
+
+
+def send_ctrl_v_win32():
+    """
+    Отправка Ctrl+V через Win32.
+    Иногда это срабатывает лучше, чем pyautogui.hotkey("ctrl", "v").
+    """
+    win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+    time.sleep(0.03)
+
+    win32api.keybd_event(ord("V"), 0, 0, 0)
+    time.sleep(0.03)
+    win32api.keybd_event(ord("V"), 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    time.sleep(0.03)
+    win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+
+def paste_text(text: str) -> str:
     text = str(text)
 
     if not text.strip():
         return "Я не понял, какой текст нужно ввести."
 
-    old_clipboard = ""
-
     try:
-        if restore_clipboard:
-            try:
-                old_clipboard = pyperclip.paste()
-            except Exception:
-                old_clipboard = ""
+        active_before = get_active_window_title()
+        print("ACTIVE WINDOW BEFORE PASTE:", repr(active_before))
 
-        pyperclip.copy(text)
-        time.sleep(0.05)
+        ok = set_clipboard_text(text)
 
-        pyautogui.hotkey("ctrl", "v")
-        time.sleep(0.05)
+        if not ok:
+            return "Не получилось записать текст в буфер обмена."
 
-        if restore_clipboard:
-            try:
-                pyperclip.copy(old_clipboard)
-            except Exception:
-                pass
+        time.sleep(0.3)
+
+        clipboard_text = get_clipboard_text()
+        print("CLIPBOARD BEFORE PASTE:", repr(clipboard_text))
+
+        if clipboard_text.strip() != text.strip():
+            print("WARNING: clipboard text differs from target text")
+
+        # Первый способ: Win32 Ctrl+V
+        send_ctrl_v_win32()
+        time.sleep(0.3)
+
+        # Второй способ fallback: pyautogui Ctrl+V
+        # Если первый способ уже сработал, второй может вставить текст второй раз.
+        # Поэтому сначала оставь fallback выключенным.
+        # pyautogui.hotkey("ctrl", "v")
+
+        active_after = get_active_window_title()
+        print("ACTIVE WINDOW AFTER PASTE:", repr(active_after))
 
         return "Ввёл текст."
 

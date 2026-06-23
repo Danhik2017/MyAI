@@ -128,10 +128,7 @@ def normalize_keyboard_text(text: str) -> str:
     for word in wake_words:
         text = text.replace(word, " ")
 
-    # убираем пунктуацию
     text = re.sub(r"[^\w\sа-яА-ЯёЁ/+-]", " ", text)
-
-    # нормализуем пробелы
     text = re.sub(r"\s+", " ", text).strip()
 
     return text

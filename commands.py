@@ -19,7 +19,67 @@ from text_input_actions import handle_text_input_command
 
 from actions import open_app, is_known_app
 
-def handle_local_command(text: str) -> str | None:
+COMMAND_STARTERS = [
+    "нажми",
+    "нажать",
+    "энтер",
+    "enter",
+    "escape",
+    "эскейп",
+    "скопируй",
+    "копировать",
+    "вставь",
+    "сохрани",
+    "отмени",
+    "выдели",
+    "закрой",
+    "открой",
+    "запусти",
+    "включи",
+    "напиши",
+    "введи",
+    "набери",
+    "напечатай",
+    "сверни",
+    "разверни",
+    "переключись",
+    "перейди",
+    "активируй",
+]
+
+def split_compound_commands(text: str) -> list[str]:
+    """
+    Делит фразу на несколько команд только там, где после 'и/потом/затем'
+    начинается новая команда.
+
+    Пример:
+    'напиши привет и нажми enter'
+    -> ['напиши привет', 'нажми enter']
+
+    Но:
+    'напиши привет и пока'
+    -> ['напиши привет и пока']
+    """
+    starters_pattern = "|".join(re.escape(word) for word in COMMAND_STARTERS)
+
+    pattern = re.compile(
+        rf"\s+(?:и|потом|затем)\s+(?=(?:{starters_pattern})\b)",
+        flags=re.IGNORECASE,
+    )
+
+    parts = pattern.split(text)
+
+    cleaned_parts = []
+
+    for part in parts:
+        part = part.strip()
+
+        if part:
+            cleaned_parts.append(part)
+
+    return cleaned_parts
+
+def handle_single_local_command(text: str) -> str | None:
     lower = text.lower().strip()
 
     print("LOCAL COMMAND RAW:", repr(text))
@@ -139,3 +199,23 @@ def handle_local_command(text: str) -> str | None:
         return open_app(app_candidate)
 
     return None
+
+def handle_local_command(text: str) -> str | None:
+    commands = split_compound_commands(text)
+
+    if len(commands) <= 1:
+        return handle_single_local_command(text)
+
+    results = []
+
+    print("COMPOUND COMMANDS:", commands)
+
+    for command in commands:
+        result = handle_single_local_command(command)
+
+        if result is None:
+            results.append(f"не понял команду «{command}»")
+        else:
+            results.append(result)
+
+    return "Выполнил команды по порядку."
