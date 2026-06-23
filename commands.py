@@ -13,6 +13,8 @@ from window_action import (
     list_open_windows,
 )
 
+from keyboard_actions import handle_keyboard_command
+
 def handle_local_command(text: str) -> str | None:
     lower = text.lower().strip()
 
@@ -105,6 +107,11 @@ def handle_local_command(text: str) -> str | None:
         if match:
             window_name = match.group(1).strip()
             return switch_to_window(window_name)
+
+    keyboard_answer = handle_keyboard_command(lower)
+
+    if keyboard_answer:
+        return keyboard_answer
 
     open_phrases = [
         "открой ",
