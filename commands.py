@@ -1,4 +1,21 @@
 import re
+from typing import Callable
+
+from confirmation import (
+    is_dangerous_command,
+    is_confirm_phrase,
+    is_cancel_phrase,
+    set_pending_command,
+    get_pending_command,
+    clear_pending_command,
+)
+
+from help_commands import handle_help_command
+
+from screen_error_actions import (
+    explain_screen_error,
+    explain_screen_code_problem,
+)
 
 from vision import analyze_screen
 
@@ -13,10 +30,8 @@ from window_action import (
 )
 
 from keyboard_actions import handle_keyboard_command
-
+from media_actions import handle_media_command
 from text_input_actions import handle_text_input_command
-
-from actions import open_app, is_known_app
 
 from clipboard_actions import (
     read_clipboard,
@@ -26,27 +41,13 @@ from clipboard_actions import (
     clear_clipboard,
 )
 
-from screen_error_actions import (
-    explain_screen_error,
-    explain_screen_code_problem,
-)
-
 from web_actions import handle_web_command
+from actions import open_app, is_known_app
 
-from media_actions import handle_media_command
+from mouse_actions import handle_mouse_command
 
-from confirmation import (
-    is_dangerous_command,
-    is_confirm_phrase,
-    is_cancel_phrase,
-    set_pending_command,
-    get_pending_command,
-    clear_pending_command,
-)
+CommandHandler = Callable[[str, str], str | None]
 
-from help_commands import handle_help_command
-
-from action_logger import get_last_logs_text
 
 COMMAND_STARTERS = [
     "нажми",
@@ -74,62 +75,56 @@ COMMAND_STARTERS = [
     "переключись",
     "перейди",
     "активируй",
+    "прочитай",
+    "объясни",
+    "исправь",
+    "найди",
+    "загугли",
+    "поищи",
+    "сделай",
 ]
 
+
+def normalize_command_text(text: str) -> str:
+    text = str(text).lower().strip()
+
+    wake_words = [
+        "джарвис",
+        "jarvis",
+        "джервис",
+        "жарвис",
+    ]
+
+    for word in wake_words:
+        text = re.sub(rf"\b{re.escape(word)}\b", " ", text)
+
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def split_compound_commands(text: str) -> list[str]:
-    """
-    Делит фразу на несколько команд только там, где после 'и/потом/затем'
-    начинается новая команда.
-
-    Пример:
-    'напиши привет и нажми enter'
-    -> ['напиши привет', 'нажми enter']
-
-    Но:
-    'напиши привет и пока'
-    -> ['напиши привет и пока']
-    """
     starters_pattern = "|".join(re.escape(word) for word in COMMAND_STARTERS)
 
     pattern = re.compile(
-        rf"\s+(?:и|потом|затем)\s+(?=(?:{starters_pattern})\b)",
+        rf"\s+(?:и|потом|затем|после этого)\s+(?=(?:{starters_pattern})\b)",
         flags=re.IGNORECASE,
     )
 
     parts = pattern.split(text)
 
-    cleaned_parts = []
+    return [part.strip() for part in parts if part.strip()]
 
-    for part in parts:
-        part = part.strip()
 
-        if part:
-            cleaned_parts.append(part)
+# ------------------- ОТДЕЛЬНЫЕ ОБРАБОТЧИКИ -------------------
 
-    return cleaned_parts
 
-def handle_single_local_command(text: str, confirmed: bool = False) -> str | None:
-    lower = text.lower().strip()
+def handle_help(text: str, lower: str) -> str | None:
+    return handle_help_command(text)
 
-    print("LOCAL COMMAND RAW:", repr(text))
-    print("LOCAL COMMAND LOWER:", repr(lower))
+def handle_mouse(text: str, lower: str) -> str | None:
+    return handle_mouse_command(text)
 
-    help_answer = handle_help_command(text)
-
-    if help_answer:
-        return help_answer
-
-    if any(phrase in lower for phrase in [
-        "покажи последние логи",
-        "прочитай последние логи",
-        "что было в логах",
-        "последние действия",
-    ]):
-        return get_last_logs_text()
-
-    if is_dangerous_command(text) and not confirmed:
-        return set_pending_command(text)
-
+def handle_screen_error(text: str, lower: str) -> str | None:
     if any(phrase in lower for phrase in [
         "объясни ошибку",
         "что за ошибка",
@@ -154,6 +149,10 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
     ]):
         return explain_screen_code_problem()
 
+    return None
+
+
+def handle_screen_vision(text: str, lower: str) -> str | None:
     screen_phrases = [
         "что на экране",
         "что сейчас на экране",
@@ -162,27 +161,30 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
         "опиши экран",
         "прочитай экран",
         "проанализируй экран",
-        "посмотри что происходит",
     ]
 
-    if any(phrase in lower for phrase in screen_phrases):
-        detailed = any(
-            word in lower
-            for word in [
-                "подробно",
-                "детально",
-                "проанализируй",
-                "объясни",
-                "что происходит",
-                "разбери",
-            ]
-        )
+    if not any(phrase in lower for phrase in screen_phrases):
+        return None
 
-        return analyze_screen(
-            question=text,
-            detailed=detailed,
-        )
+    detailed = any(
+        word in lower
+        for word in [
+            "подробно",
+            "детально",
+            "проанализируй",
+            "объясни",
+            "что происходит",
+            "разбери",
+        ]
+    )
 
+    return analyze_screen(
+        question=text,
+        detailed=detailed,
+    )
+
+
+def handle_windows(text: str, lower: str) -> str | None:
     if any(phrase in lower for phrase in [
         "какие окна открыты",
         "список окон",
@@ -237,25 +239,27 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
 
     for pattern in switch_patterns:
         match = re.search(pattern, lower)
+
         if match:
             window_name = match.group(1).strip()
             return switch_to_window(window_name)
 
-    keyboard_answer = handle_keyboard_command(lower)
+    return None
 
-    if keyboard_answer:
-        return keyboard_answer
 
-    media_answer = handle_media_command(text)
+def handle_keyboard(text: str, lower: str) -> str | None:
+    return handle_keyboard_command(text)
 
-    if media_answer:
-        return media_answer
 
-    text_input_answer = handle_text_input_command(text)
+def handle_media(text: str, lower: str) -> str | None:
+    return handle_media_command(text)
 
-    if text_input_answer:
-        return text_input_answer
 
+def handle_text_input(text: str, lower: str) -> str | None:
+    return handle_text_input_command(text)
+
+
+def handle_clipboard(text: str, lower: str) -> str | None:
     if any(phrase in lower for phrase in [
         "прочитай буфер обмена",
         "что в буфере обмена",
@@ -295,20 +299,44 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
     ]):
         return clear_clipboard()
 
-    web_answer = handle_web_command(text)
+    return None
 
-    if web_answer:
-        return web_answer
 
-    open_phrases = [
+def handle_known_app_before_web(text: str, lower: str) -> str | None:
+    """
+    Важно: этот обработчик стоит ДО web.
+    Иначе 'открой блокнот' может ошибочно попасть в открытие сайта.
+    """
+    open_prefixes = [
         "открой ",
         "запусти ",
         "включи ",
     ]
 
-    for phrase in open_phrases:
-        if lower.startswith(phrase):
-            app_name = lower.replace(phrase, "", 1).strip()
+    for prefix in open_prefixes:
+        if lower.startswith(prefix):
+            app_candidate = lower.replace(prefix, "", 1).strip()
+
+            if is_known_app(app_candidate):
+                return open_app(app_candidate)
+
+    return None
+
+
+def handle_web(text: str, lower: str) -> str | None:
+    return handle_web_command(text)
+
+
+def handle_app(text: str, lower: str) -> str | None:
+    open_prefixes = [
+        "открой ",
+        "запусти ",
+        "включи ",
+    ]
+
+    for prefix in open_prefixes:
+        if lower.startswith(prefix):
+            app_name = lower.replace(prefix, "", 1).strip()
             return open_app(app_name)
 
     app_candidate = lower.strip()
@@ -317,6 +345,47 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
         return open_app(app_candidate)
 
     return None
+
+
+COMMAND_HANDLERS: list[tuple[str, CommandHandler]] = [
+    ("help", handle_help),
+    ("screen_error", handle_screen_error),
+    ("screen_vision", handle_screen_vision),
+    ("windows", handle_windows),
+    ("keyboard", handle_keyboard),
+    ("media", handle_media),
+    ("mouse", handle_mouse),
+    ("text_input", handle_text_input),
+    ("clipboard", handle_clipboard),
+    ("known_app_before_web", handle_known_app_before_web),
+    ("web", handle_web),
+    ("app", handle_app),
+]
+
+
+def route_single_command(text: str, confirmed: bool = False) -> str | None:
+    lower = normalize_command_text(text)
+
+    print("LOCAL COMMAND RAW:", repr(text))
+    print("LOCAL COMMAND LOWER:", repr(lower))
+
+    if is_dangerous_command(lower) and not confirmed:
+        return set_pending_command(lower)
+
+    for handler_name, handler in COMMAND_HANDLERS:
+        try:
+            result = handler(text, lower)
+
+            if result:
+                print("COMMAND HANDLER:", handler_name)
+                return result
+
+        except Exception as e:
+            print(f"Ошибка обработчика {handler_name}:", e)
+            return f"Произошла ошибка в обработчике команды {handler_name}."
+
+    return None
+
 
 def handle_local_command(text: str) -> str | None:
     pending = get_pending_command()
@@ -328,7 +397,7 @@ def handle_local_command(text: str) -> str | None:
 
             print("CONFIRMED COMMAND:", repr(command_text))
 
-            return handle_single_local_command(
+            return route_single_command(
                 command_text,
                 confirmed=True,
             )
@@ -337,27 +406,24 @@ def handle_local_command(text: str) -> str | None:
             clear_pending_command()
             return "Отменил команду."
 
-    # Если подтверждения нет, выполняем обычную команду
     commands = split_compound_commands(text)
 
     if len(commands) <= 1:
-        return handle_single_local_command(text)
-
-    results = []
+        return route_single_command(text)
 
     print("COMPOUND COMMANDS:", commands)
 
+    results = []
+
     for command in commands:
-        result = handle_single_local_command(command)
+        result = route_single_command(command)
 
         if result is None:
             results.append(f"не понял команду «{command}»")
         else:
             results.append(result)
 
-            # Если одна из команд запросила подтверждение,
-            # дальше цепочку не продолжаем.
-            if get_pending_command():
-                return result
+        if get_pending_command():
+            return result
 
     return "Выполнил команды по порядку."
