@@ -1,5 +1,7 @@
 GROQ_API_KEY.txt
+GROQ_API_KEY*
 .env
+*.env
 
 __pycache__/
 *.pyc
@@ -9,6 +11,7 @@ input.wav
 replay.mp3
 test.mp3
 wake.wav
-memory.json
 
+memory.json
 screenshots/
+logs/

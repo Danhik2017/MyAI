@@ -18,6 +18,13 @@ import time
 
 from commands import handle_local_command
 
+from action_logger import (
+    log_user_input,
+    log_local_command,
+    log_ai_answer,
+    log_error,
+)
+
 SESSION_TIMEOUT = 12
 
 state = {
@@ -59,6 +66,8 @@ def main():
 
         print("Вы:", text)
 
+        log_user_input(text)
+
         state["last activity"] = time.time()
 
 
@@ -99,19 +108,43 @@ def main():
             continue
         #--------------------------------------------------
 
-        local_answer = handle_local_command(text)
+        try:
+            local_answer = handle_local_command(text)
 
-        if local_answer:
-            print("Джарвис:", local_answer)
-            speak(local_answer)
+            if local_answer:
+                log_local_command(text, local_answer)
+
+                print("Джарвис:", local_answer)
+                speak(local_answer)
+
+                state["last activity"] = time.time()
+                continue
+
+        except Exception as e:
+            log_error("handle_local_command", e, user_text=text)
+            print("Ошибка локальной команды:", e)
+
+            error_answer = "Произошла ошибка при выполнении локальной команды."
+            print("Джарвис:", error_answer)
+            speak(error_answer)
+
             state["last activity"] = time.time()
             continue
 
-        answer = ask_ai(text)
+        try:
+            answer = ask_ai(text)
 
-        print("Джарвис:", answer)
+            log_ai_answer(text, answer)
 
-        speak(answer)
+            print("Джарвис:", answer)
+            speak(answer)
+
+        except Exception as e:
+            log_error("ask_ai", e, user_text=text)
+
+            answer = "Произошла ошибка при обращении к ИИ."
+            print("Джарвис:", answer)
+            speak(answer)
 
         state["last activity"] = time.time()
 

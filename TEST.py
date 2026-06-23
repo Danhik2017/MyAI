@@ -1,16 +1,12 @@
-from media_actions import handle_media_command
+from help_commands import handle_help_command
 
 tests = [
-    "сделай громче",
-    "сделай тише",
-    "сделай громче на 5",
-    "выключи звук",
-    "пауза",
-    "следующий трек",
-    "предыдущий трек",
+    "что ты умеешь",
+    "покажи команды",
+    "подробная помощь",
+    "полный список команд",
 ]
 
 for command in tests:
-    print("\nTEST:", command)
-    result = handle_media_command(command)
-    print("RESULT:", result)
+    print("\nUSER:", command)
+    print("ASSISTANT:", handle_help_command(command))

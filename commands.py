@@ -44,6 +44,10 @@ from confirmation import (
     clear_pending_command,
 )
 
+from help_commands import handle_help_command
+
+from action_logger import get_last_logs_text
+
 COMMAND_STARTERS = [
     "нажми",
     "нажать",
@@ -109,6 +113,19 @@ def handle_single_local_command(text: str, confirmed: bool = False) -> str | Non
 
     print("LOCAL COMMAND RAW:", repr(text))
     print("LOCAL COMMAND LOWER:", repr(lower))
+
+    help_answer = handle_help_command(text)
+
+    if help_answer:
+        return help_answer
+
+    if any(phrase in lower for phrase in [
+        "покажи последние логи",
+        "прочитай последние логи",
+        "что было в логах",
+        "последние действия",
+    ]):
+        return get_last_logs_text()
 
     if is_dangerous_command(text) and not confirmed:
         return set_pending_command(text)
