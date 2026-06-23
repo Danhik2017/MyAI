@@ -6,6 +6,7 @@ import mss.tools
 from PIL import Image
 from ollama import Client, ResponseError
 
+from text_normalizer import normalize_vision_answer
 
 SCREENSHOT_DIR = Path("screenshots")
 VISION_MODEL = "llava:7b"
@@ -105,19 +106,20 @@ def analyze_screen(question: str | None = None, detailed: bool = False) -> str:
                 }
             ],
             options={
-                "temperature": 0.3,
+                "temperature": 0.2,
                 "num_ctx": 4096,
-                "num_predict": 220 if detailed else 120,
-                "repeat_penalty": 1.05,
+                "num_predict": 180,
             },
         )
 
-        answer = response["message"]["content"].strip()
+        raw_answer = response["message"]["content"].strip()
 
-        if not answer:
-            return "Я посмотрел на экран, но не смог уверенно разобрать содержимое."
+        print("RAW VISION ANSWER:", raw_answer)
 
-        return answer
+        return normalize_vision_answer(
+            raw_text=raw_answer,
+            user_question=question,
+        )
 
     except ResponseError as e:
         print("Ошибка Ollama vision ResponseError:", e)
