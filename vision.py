@@ -17,6 +17,7 @@ client = Client(
     timeout=120,
 )
 
+#----#
 
 def take_screenshot(monitor_index: int = 1) -> Path:
     SCREENSHOT_DIR.mkdir(exist_ok=True)
