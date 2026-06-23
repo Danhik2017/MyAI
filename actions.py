@@ -1,52 +1,68 @@
+import re
 import subprocess
 import platform
-from pathlib import Path
-
 
 SYSTEM = platform.system().lower()
 
 
 WINDOWS_APPS = {
-    "блокнот": r"C:\Windows\System32\notepad.exe",
-    "notepad": r"C:\Windows\System32\notepad.exe",
+    "блокнот": ["notepad.exe"],
+    "notepad": ["notepad.exe"],
 
-    "калькулятор": "calc.exe",
-    "calculator": "calc.exe",
+    "калькулятор": ["calc.exe"],
+    "calculator": ["calc.exe"],
 
-    "paint": "mspaint.exe",
-    "пэйнт": "mspaint.exe",
+    "paint": ["mspaint.exe"],
+    "пэйнт": ["mspaint.exe"],
 
-    "проводник": "explorer.exe",
-    "папка": "explorer.exe",
-    "explorer": "explorer.exe",
+    "проводник": ["explorer.exe"],
+    "explorer": ["explorer.exe"],
 
-    "хром": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    "браузер": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "хром": ["cmd", "/c", "start", "", "chrome"],
+    "chrome": ["cmd", "/c", "start", "", "chrome"],
+    "браузер": ["cmd", "/c", "start", "", "chrome"],
 
-    "edge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    "edge": ["cmd", "/c", "start", "", "msedge"],
 
-    "vscode": r"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe",
-    "vs code": r"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe",
-    "visual studio code": r"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+    "vscode": ["cmd", "/c", "start", "", "code"],
+    "vs code": ["cmd", "/c", "start", "", "code"],
+    "visual studio code": ["cmd", "/c", "start", "", "code"],
 }
 
 
 def normalize_app_name(text: str) -> str:
-    return (
-        text.lower()
-        .replace("приложение", "")
-        .replace("программу", "")
-        .replace("пожалуйста", "")
-        .strip()
-    )
+    text = text.lower().strip()
+
+    # убираем пунктуацию: chrome. -> chrome
+    text = re.sub(r"[^\w\sа-яА-ЯёЁ-]", " ", text)
+
+    trash_words = [
+        "приложение",
+        "программу",
+        "пожалуйста",
+        "мне",
+        "давай",
+        "можешь",
+        "можно",
+        "надо",
+        "нужно",
+    ]
+
+    for word in trash_words:
+        text = text.replace(word, " ")
+
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 
 def open_app(app_name: str) -> str:
-    app_name = normalize_app_name(app_name)
-
     if SYSTEM != "windows":
         return "Пока открытие приложений настроено только для Windows."
+
+    app_name = normalize_app_name(app_name)
+
+    print("OPEN APP NORMALIZED:", repr(app_name))
 
     command = WINDOWS_APPS.get(app_name)
 
@@ -54,14 +70,12 @@ def open_app(app_name: str) -> str:
         available = ", ".join(sorted(WINDOWS_APPS.keys()))
         return f"Я пока не умею открывать «{app_name}». Доступные приложения: {available}."
 
-    command = command.replace("%USERNAME%", Path.home().name)
-
     try:
-        subprocess.Popen([command], shell=False)
+        subprocess.Popen(command, shell=False)
         return f"Открываю {app_name}."
 
     except FileNotFoundError:
-        return f"Не нашёл файл приложения для «{app_name}». Проверь путь в actions.py."
+        return f"Не нашёл приложение «{app_name}». Проверь команду запуска: {command}."
 
     except Exception as e:
         print("Ошибка открытия приложения:", e)

@@ -89,13 +89,20 @@ def build_screen_prompt(user_question: str | None = None, detailed: bool = False
 """.strip()
 
 
-def analyze_screen(question: str | None = None, detailed: bool = False) -> str:
-    raw_screenshot = take_screenshot()
-    image_path = compress_image_for_vision(raw_screenshot)
-
-    prompt = build_screen_prompt(question, detailed=detailed)
+def analyze_screen(question: str | None = None) -> str:
+    raw_screenshot = None
+    image_path = None
 
     try:
+        raw_screenshot = take_screenshot()
+        image_path = compress_image_for_vision(raw_screenshot)
+
+        prompt = question or (
+            "Опиши, что сейчас видно на экране компьютера. "
+            "Если виден текст, кратко перескажи его. "
+            "Ответь на русском языке."
+        )
+
         response = client.chat(
             model=VISION_MODEL,
             messages=[
@@ -106,20 +113,12 @@ def analyze_screen(question: str | None = None, detailed: bool = False) -> str:
                 }
             ],
             options={
-                "temperature": 0.2,
-                "num_ctx": 4096,
-                "num_predict": 180,
+                "temperature": 0.1,
+                "num_ctx": 2048,
             },
         )
 
-        raw_answer = response["message"]["content"].strip()
-
-        print("RAW VISION ANSWER:", raw_answer)
-
-        return normalize_vision_answer(
-            raw_text=raw_answer,
-            user_question=question,
-        )
+        return response["message"]["content"].strip()
 
     except ResponseError as e:
         print("Ошибка Ollama vision ResponseError:", e)
@@ -138,3 +137,17 @@ def analyze_screen(question: str | None = None, detailed: bool = False) -> str:
     except Exception as e:
         print("Ошибка анализа экрана:", e)
         return "Произошла ошибка при анализе экрана."
+
+    finally:
+        safe_delete_file(image_path)
+        safe_delete_file(raw_screenshot)
+
+def safe_delete_file(path: Path | None):
+    if not path:
+        return
+
+    try:
+        if path.exists():
+            path.unlink()
+    except Exception as e:
+        print(f"Не удалось удалить временный файл {path}: {e}")

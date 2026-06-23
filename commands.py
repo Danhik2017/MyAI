@@ -43,6 +43,9 @@ def handle_local_command(text: str) -> str | None:
     for phrase in open_phrases:
         if lower.startswith(phrase):
             app_name = lower.replace(phrase, "", 1).strip()
+            print("LOCAL COMMAND RAW:", repr(text))
+            print("LOCAL COMMAND LOWER:", repr(lower))
             return open_app(app_name)
+
 
     return None

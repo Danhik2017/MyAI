@@ -1,12 +1,5 @@
-from tts import speak
+from actions import open_app
 
-tests = [
-    "Произошла ошибка при анализе экрана.",
-    "Ollama разорвал соединение во время анализа экрана.",
-    "На экране открыт VS Code и Chrome.",
-    "Ошибка API: http://localhost:11434/api/tags",
-]
-
-for text in tests:
-    print("TEST:", text)
-    speak(text)
+print(open_app("chrome."))
+print(open_app("блокнот."))
+print(open_app("калькулятор пожалуйста"))
