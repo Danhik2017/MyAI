@@ -112,6 +112,11 @@ def main():
             local_answer = handle_local_command(text)
 
             if local_answer:
+                if local_answer == "__SILENT__":
+                    log_local_command(text, "silent dictation input")
+                    state["last activity"] = time.time()
+                    continue
+
                 log_local_command(text, local_answer)
 
                 print("Джарвис:", local_answer)

@@ -46,8 +46,9 @@ from actions import open_app, is_known_app
 
 from mouse_actions import handle_mouse_command
 
-CommandHandler = Callable[[str, str], str | None]
+from dictation_mode import handle_dictation_mode, SILENT_RESPONSE
 
+CommandHandler = Callable[[str, str], str | None]
 
 COMMAND_STARTERS = [
     "нажми",
@@ -388,6 +389,11 @@ def route_single_command(text: str, confirmed: bool = False) -> str | None:
 
 
 def handle_local_command(text: str) -> str | None:
+    dictation_result = handle_dictation_mode(text)
+
+    if dictation_result is not None:
+        return dictation_result
+
     pending = get_pending_command()
 
     if pending:
